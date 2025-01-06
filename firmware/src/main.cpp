@@ -1,5 +1,7 @@
 #include <ESP8266WiFi.h>
 #include <espnow.h>
+ #include "CytronMotorDriver.h"
+
 
 // Structure example to receive data
 // Must match the sender structure
@@ -11,6 +13,10 @@ typedef struct struct_message
 
 // Create a struct_message called myData
 struct_message myData;
+
+CytronMD motor1(PWM_PWM, D5, D6);   // PWM 1A = Pin 3, PWM 1B = Pin 9.
+CytronMD motor2(PWM_PWM, D7, D8); // PWM 2A = Pin 10, PWM 2B = Pin 11.
+
 
 // Callback function that will be executed when data is received
 void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) {
@@ -44,5 +50,6 @@ void setup() {
 }
 
 void loop() {
-  
+  motor1.setSpeed(255);   // Motor 1 runs forward at full speed.
+  motor2.setSpeed(-255);
 }
