@@ -2,7 +2,6 @@
 #include <espnow.h>
 #include "CytronMotorDriver.h"
 
-
 // Structure example to receive data
 // Must match the sender structure
 typedef struct struct_message
@@ -17,16 +16,15 @@ struct_message myData;
 CytronMD motor1(PWM_PWM, D5, D6);
 CytronMD motor2(PWM_PWM, D7, D8);
 
-
 // Callback function that will be executed when data is received
 void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) {
   memcpy(&myData, incomingData, sizeof(myData));
   Serial.print("Bytes received: ");
   Serial.println(len);
-  Serial.print("Char: ");
-  Serial.println(myData.vel_w);
-  Serial.print("Int: ");
+  Serial.print("Velecity X");
   Serial.println(myData.vel_x);
+  Serial.print("Velecity W ");
+  Serial.println(myData.vel_w);
   Serial.println();
 }
  
@@ -50,7 +48,6 @@ void setup() {
 }
 
 void loop() {
-  motor1.setSpeed(255);   // Motor 1 runs forward at full speed.
-  motor2.setSpeed(-255);
+  motor1.setSpeed(70);
+  motor2.setSpeed(70);
 }
-
