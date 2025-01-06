@@ -54,4 +54,3 @@ void loop() {
   motor2.setSpeed(-255);
 }
 
-// Hi Abhinav in ur codebase
