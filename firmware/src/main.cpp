@@ -1,32 +1,48 @@
-#include <Arduino.h>
-#include "CytronMotorDriver.h"
+#include <ESP8266WiFi.h>
+#include <espnow.h>
 
-CytronMD motor2(PWM_PWM,D1,D2);   
-CytronMD motor1(PWM_PWM, D3, D4 ); 
+// Structure example to receive data
+// Must match the sender structure
+typedef struct struct_message
+{
+  int vel_x;
+  int vel_w;
+} struct_message;
 
-int max_pwm = 255;  // Max PWM value for motor control
+// Create a struct_message called myData
+struct_message myData;
 
-void calculateMotorPWM(float v_x, float w, int max_pwm) {
-    float wheel_base = 0.2;
-    float v_left = v_x - (w * wheel_base / 2.0);
-    float v_right = v_x + (w * wheel_base / 2.0);
-
-    int left_pwm = constrain(v_left, -max_pwm, max_pwm);
-    int right_pwm = constrain(v_right, -max_pwm, max_pwm);
-
-    motor1.setSpeed(left_pwm);  
-    motor2.setSpeed(right_pwm);  
-
-    Serial.print("Left PWM: ");
-    Serial.print(left_pwm);
-    Serial.print("\tRight PWM: ");
-    Serial.println(right_pwm);
+// Callback function that will be executed when data is received
+void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) {
+  memcpy(&myData, incomingData, sizeof(myData));
+  Serial.print("Bytes received: ");
+  Serial.println(len);
+  Serial.print("Char: ");
+  Serial.println(myData.vel_w);
+  Serial.print("Int: ");
+  Serial.println(myData.vel_x);
+  Serial.println();
 }
-
+ 
 void setup() {
+  // Initialize Serial Monitor
   Serial.begin(9600);
+  
+  // Set device as a Wi-Fi Station
+  WiFi.mode(WIFI_STA);
+
+  // Init ESP-NOW
+  if (esp_now_init() != 0) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
+  
+  // Once ESPNow is successfully Init, we will register for recv CB to
+  // get recv packer info
+  esp_now_set_self_role(ESP_NOW_ROLE_SLAVE);
+  esp_now_register_recv_cb(OnDataRecv);
 }
 
 void loop() {
-  calculateMotorPWM(0,0,max_pwm);
+  
 }
