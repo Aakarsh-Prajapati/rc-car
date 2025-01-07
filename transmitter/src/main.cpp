@@ -6,7 +6,8 @@ uint8_t broadcastAddress[] = {0x24, 0xd7, 0xeb, 0x0f, 0x8c, 0x74};
 
 // Structure example to send data
 // Must match the receiver structure
-typedef struct struct_message {
+typedef struct struct_message
+{
   float vel_x;
   float vel_w;
 } struct_message;
@@ -19,16 +20,21 @@ unsigned long previousMillis = 0;
 unsigned long interval = 50; // 50 ms = 20 times per second
 
 // Callback when data is sent
-void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
+void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus)
+{
   Serial.print("Last Packet Send Status: ");
-  if (sendStatus == 0) {
+  if (sendStatus == 0)
+  {
     Serial.println("Delivery success");
-  } else {
+  }
+  else
+  {
     Serial.println("Delivery fail");
   }
 }
 
-void setup() {
+void setup()
+{
   // Init Serial Monitor
   Serial.begin(9600);
 
@@ -36,7 +42,8 @@ void setup() {
   WiFi.mode(WIFI_STA);
 
   // Init ESP-NOW
-  if (esp_now_init() != 0) {
+  if (esp_now_init() != 0)
+  {
     Serial.println("Error initializing ESP-NOW");
     return;
   }
@@ -50,15 +57,25 @@ void setup() {
   esp_now_add_peer(broadcastAddress, ESP_NOW_ROLE_SLAVE, 1, NULL, 0);
 }
 
-void loop() {
+void loop()
+{
   unsigned long currentMillis = millis();
 
   // Check if 50 ms have passed (20 times per second)
-  if (currentMillis - previousMillis >= interval) {
+  if (currentMillis - previousMillis >= interval)
+  {
     previousMillis = currentMillis; // Save the last time you sent data
+    int potValue = analogRead(A0); // Read the potentiometer value (0 to 1023)
 
-    myData.vel_x = 0;
-    myData.vel_w = 2;
+    float new_value = (float(potValue-532)/530.0)*10 ;
+
+    myData.vel_x = 0; // -3 to 3
+    myData.vel_w = new_value; // -10 to 10
     esp_now_send(broadcastAddress, (uint8_t *)&myData, sizeof(myData));
+
+    // Print the potentiometer value to the serial monitor
+    Serial.print("Potentiometer Value: ");
+    Serial.println(new_value);
   }
 }
+                                                                            
