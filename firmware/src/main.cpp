@@ -1,5 +1,5 @@
-#include "Kinematics.h" // Include the Kinematics library
-#include <MotorDriverESP32.h>
+#include "Kinematics.h"
+#include "CytronMotorDriver.h"
 #include <WiFi.h>
 #include <esp_now.h>
 
@@ -13,8 +13,8 @@ typedef struct struct_message {
 struct_message myData;
 
 // Initialize motor driver objects for two motors
-MotorDriver motor1(18, 19); // Motor 1 connected to pins 18 and 19
-MotorDriver motor2(16, 17); // Motor 2 connected to pins 16 and 17
+CytronMD motor1(PWM_PWM, 18, 19);   // PWM 1A = Pin 3, PWM 1B = Pin 9.
+CytronMD motor2(PWM_PWM, 16, 17);   // PWM 1A = Pin 3, PWM 1B = Pin 9.
 
 // Kinematics parameters
 float wheelRadius = 0.10; // Radius of the wheel in meters (e.g., 10 cm)
@@ -67,8 +67,8 @@ void loop() {
   Serial.println("---");
 
   // Set motor speeds based on the received data
-  motor1.setSpeed(50);
-  motor2.setSpeed(50);
+  motor1.setSpeed(motorRPM.motor1);
+  motor2.setSpeed(motorRPM.motor2);
 
   // Add a small delay for stability
   delay(100);
