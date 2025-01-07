@@ -1,22 +1,24 @@
-#include <Wire.h>
-#include <espnow.h>
-#include <ESP8266WiFi.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <ESP8266WiFi.h>
+#include <Wire.h>
+#include <espnow.h>
+
+#define BUTTON_LEFT D5
+#define BUTTON_RIGHT D4
 
 // RC DRIVE'S MAC Address - D8:BF:C0:0E:63:05 esp32 24:d7:eb:0f:8c:74
 uint8_t broadcastAddress[] = {0x24, 0xd7, 0xeb, 0x0f, 0x8c, 0x74};
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
-#define OLED_RESET     -1
+#define OLED_RESET -1
 #define SCREEN_ADDRESS 0x3C ///< Address of the display (0x3C for 128x64)
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // Must match the receiver structure
-typedef struct struct_message
-{
+typedef struct struct_message {
   float vel_x;
   float vel_w;
 } struct_message;
@@ -29,43 +31,40 @@ unsigned long previousMillis = 0;
 unsigned long interval = 50; // 50 ms = 20 times per second
 
 // Callback when data is sent
-void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus)
-{
+void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
   Serial.print("Last Packet Send Status: ");
-  if (sendStatus == 0)
-  {
-    Serial.println("Delivery success");
-  }
-  else
-  {
-    Serial.println("Delivery fail");
+  if (sendStatus == 0) {
+    // Serial.println("Delivery success");
+  } else {
+    // Serial.println("Delivery fail");
   }
 }
 
-void setup()
-{
+void setup() {
   // Init Serial Monitor
   Serial.begin(9600);
-  
+  pinMode(BUTTON_LEFT, INPUT_PULLUP);
+  pinMode(BUTTON_RIGHT, INPUT_PULLUP);
+
   // Initialize the OLED display
   if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
     Serial.println(F("SSD1306 allocation failed"));
-    for (;;); // Infinite loop if display doesn't initialize
+    for (;;)
+      ; // Infinite loop if display doesn't initialize
   }
-  
+
   // Clear the display and set up the text
   display.setRotation(2);
   display.clearDisplay();
-  display.setTextSize(4);      // Set text size (2x scale)
+  display.setTextSize(4);              // Set text size (2x scale)
   display.setTextColor(SSD1306_WHITE); // Set text color to white
-  display.setCursor(0, 0);     // Start at the top-left corner
+  display.setCursor(0, 0);             // Start at the top-left corner
 
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
 
   // Init ESP-NOW
-  if (esp_now_init() != 0)
-  {
+  if (esp_now_init() != 0) {
     Serial.println("Error initializing ESP-NOW");
     return;
   }
@@ -79,40 +78,49 @@ void setup()
   esp_now_add_peer(broadcastAddress, ESP_NOW_ROLE_SLAVE, 1, NULL, 0);
 }
 
-void loop()
-{
+void loop() {
   unsigned long currentMillis = millis();
 
   // Check if 50 ms have passed (20 times per second)
-  if (currentMillis - previousMillis >= interval)
-  {
+  if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis; // Save the last time you sent data
-    int potValue = analogRead(A0); // Read the potentiometer value (0 to 1023)
+    int potValue = analogRead(A0);  // Read the potentiometer value (0 to 1023)
 
     // Calculate new_value for vel_w (velocity)
-    float new_value = (float(potValue-532)/530.0)*10 ;
-
-    // Assign values to the structure
-    myData.vel_x = 0; // Set to 0 for now (no change, you can modify as needed)
-    myData.vel_w = new_value; // -10 to 10
-
-    // Send the data
-    esp_now_send(broadcastAddress, (uint8_t *)&myData, sizeof(myData));
-
-    // Print the potentiometer value to the serial monitor
-    Serial.print("Potentiometer Value: ");
+    float new_value = (float(potValue - 532) / 530.0) * 10;
     Serial.println(new_value);
 
-    // Display vel_x and vel_w on OLED screen
-    display.clearDisplay();  // Clear the display before updating
-    display.setCursor(0, 0); // Reset cursor position
-    display.setTextSize(1.5);  // Set smaller text size for the display
-    display.print("Vel X: ");
-    display.println(myData.vel_x, 2);  // Display vel_x value with 2 decimal places
+    // Read button state
+    int button_left_state = digitalRead(BUTTON_LEFT);
+    int button_right_state = digitalRead(BUTTON_RIGHT);
 
-    display.setCursor(0, 20);  // Move to a new line for vel_w
+    if (button_left_state == LOW && button_right_state == HIGH) {
+      myData.vel_w = 3; // Only left button pressed
+      Serial.println("Right");
+    } else if (button_right_state == LOW && button_left_state == HIGH) {
+      myData.vel_w = -3; // Only right button pressed
+      Serial.println("Left");
+    } else {
+      myData.vel_w = 0; // No button or both buttons pressed
+    }
+
+    // Assign values to the structure
+    myData.vel_x = new_value;
+
+    esp_now_send(broadcastAddress, (uint8_t *)&myData, sizeof(myData));
+
+    // Display vel_x and vel_w on OLED screen
+    display.clearDisplay();   // Clear the display before updating
+    display.setCursor(0, 0);  // Reset cursor position
+    display.setTextSize(1.5); // Set smaller text size for the display
+    display.print("Vel X: ");
+    display.println(myData.vel_x,
+                    2); // Display vel_x value with 2 decimal places
+
+    display.setCursor(0, 20); // Move to a new line for vel_w
     display.print("Vel W: ");
-    display.println(myData.vel_w, 2);  // Display vel_w value with 2 decimal places
+    display.println(myData.vel_w,
+                    2); // Display vel_w value with 2 decimal places
 
     // Update the display to show the text
     display.display();
