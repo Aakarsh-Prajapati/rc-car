@@ -5,7 +5,7 @@
 #include <espnow.h>
 
 #define BUTTON_LEFT D5
-#define BUTTON_RIGHT D4
+#define BUTTON_RIGHT D6
 
 // RC DRIVE'S MAC Address - D8:BF:C0:0E:63:05 esp32 24:d7:eb:0f:8c:74
 uint8_t broadcastAddress[] = {0x24, 0xd7, 0xeb, 0x0f, 0x8c, 0x74};
