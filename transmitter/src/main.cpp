@@ -138,10 +138,10 @@ void loop() {
      * - No button or both buttons pressed: No angular velocity
      */
     if (button_left_state == LOW && button_right_state == HIGH) {
-      myData.vel_w = 3; // Only left button pressed
+      myData.vel_w = 7; // Only left button pressed
       Serial.println("Right");
     } else if (button_right_state == LOW && button_left_state == HIGH) {
-      myData.vel_w = -3; // Only right button pressed
+      myData.vel_w = -7; // Only right button pressed
       Serial.println("Left");
     } else {
       myData.vel_w = 0; // No angular velocity
