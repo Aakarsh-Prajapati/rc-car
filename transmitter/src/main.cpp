@@ -11,17 +11,28 @@
 // Dead zone threshold for joystick sensitivity
 #define DEAD_ZONE 10
 
-// Variable to store the connection status
-String drive_status;
-
-// RC DRIVE'S MAC Address (Target device for ESP-NOW communication)
-uint8_t broadcastAddress[] = {0x24, 0xd7, 0xeb, 0x0f, 0x8c, 0x74};
-
 // OLED Display Configuration
 #define SCREEN_WIDTH 128    // OLED display width in pixels
 #define SCREEN_HEIGHT 64    // OLED display height in pixels
 #define OLED_RESET -1       // Reset pin (-1 if not used)
 #define SCREEN_ADDRESS 0x3C // I2C address of the OLED display
+
+// RC DRIVE'S MAC Address (Target device for ESP-NOW communication)
+uint8_t broadcastAddress[] = {0x24, 0xd7, 0xeb, 0x0f, 0x8c, 0x74};
+
+// UART timeout configuration
+#define UART_TIMEOUT 100 // Timeout in milliseconds for UART data reception
+
+// Timing variables for non-blocking updates
+#define INTERVAL 50 // Interval for sending data (50ms = 20 updates per second)
+
+// Declare global variables
+String drive_status;
+float UART_ON = false;
+String recived_data_from_UART = "";
+unsigned long previous_UART_recived = 0;
+unsigned long previousMillis = 0;
+unsigned long interval = INTERVAL;
 
 // Initialize the display object
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -35,20 +46,15 @@ typedef struct struct_message {
 // Create an instance of the velocity structure
 struct_message myData;
 
-// Timing variables for non-blocking updates
-unsigned long previousMillis = 0;
-unsigned long interval =
-    50; // Interval for sending data (50ms = 20 updates per second)
-
 /**
  * Callback function for ESP-NOW data transmission status.
  * Updates the drive_status variable based on the send status.
  */
 void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
   if (sendStatus == 0) {
-    drive_status = "Connected"; // Data successfully sent
+    drive_status = "UP"; // Data successfully sent
   } else {
-    drive_status = "Disconnected"; // Data transmission failed
+    drive_status = "DOWN"; // Data transmission failed
   }
 }
 
@@ -97,12 +103,50 @@ void setup() {
 }
 
 /**
+ * Function to parse the data when the delimiter '|' is encountered.
+ */
+void parseData(String data) {
+  if (data.startsWith("x")) {
+    myData.vel_x = data.substring(1).toFloat();
+  } else if (data.startsWith("w")) {
+    myData.vel_w = data.substring(1).toFloat();
+  } else if (data.startsWith("m")) {
+    // Handle 'm' data if necessary
+  } else {
+    // Handle other cases if necessary
+  }
+}
+
+/**
  * Main loop - runs continuously after setup.
  * Reads joystick input, button states, and sends data via ESP-NOW.
  * Updates the OLED display with velocity data and connection status.
  */
 void loop() {
   unsigned long currentMillis = millis();
+
+  /*
+   * Read data coming from UART and set UART_ON to true if
+   * data is incoming, else false.
+   */
+  if (Serial.available() > 0) {
+    char incomingByte = Serial.read();
+    recived_data_from_UART += incomingByte;
+    previous_UART_recived = currentMillis;
+
+    // If we encounter a '|' delimiter, process the data
+    if (incomingByte == '|') {
+      parseData(recived_data_from_UART);
+      recived_data_from_UART = "";
+    }
+  }
+
+  // Check if UART data timeout has occurred
+  if (currentMillis - previous_UART_recived <= UART_TIMEOUT) {
+    UART_ON = true;
+  } else {
+    UART_ON = false;
+  }
 
   // Check if the update interval has passed
   if (currentMillis - previousMillis >= interval) {
@@ -132,21 +176,26 @@ void loop() {
     int button_right_state = digitalRead(BUTTON_RIGHT);
 
     /*
-     * Determine angular velocity based on button presses:
+     * Determine angular velocity based on button presses
+     * and when no data is coming from UART:
      * - Left button pressed: Positive angular velocity
      * - Right button pressed: Negative angular velocity
      * - No button or both buttons pressed: No angular velocity
      */
-    if (button_left_state == LOW && button_right_state == HIGH) {
-      myData.vel_w = 7; // Left turn
-    } else if (button_right_state == LOW && button_left_state == HIGH) {
-      myData.vel_w = -7; // Right turn
-    } else {
-      myData.vel_w = 0; // No angular velocity
+    if (UART_ON == false) {
+      if (button_left_state == LOW && button_right_state == HIGH) {
+        myData.vel_w = 7; // Left turn
+      } else if (button_right_state == LOW && button_left_state == HIGH) {
+        myData.vel_w = -7; // Right turn
+      } else {
+        myData.vel_w = 0; // No angular velocity
+      }
     }
 
     // Assign the joystick (linear velocity) value to the structure
-    myData.vel_x = x_axis_pot;
+    if (UART_ON == false) {
+      myData.vel_x = x_axis_pot;
+    }
 
     // Send velocity data via ESP-NOW
     esp_now_send(broadcastAddress, (uint8_t *)&myData, sizeof(myData));
@@ -154,10 +203,16 @@ void loop() {
     // Update the OLED display with current status and velocities
     display.clearDisplay(); // Clear the previous display contents
     display.setCursor(0, 0);
-    display.print("Status: " + drive_status);
 
+    String uart_msg;
+    if (UART_ON) {
+      uart_msg = "UP";
+    } else {
+      uart_msg = "DOWN";
+    }
+    display.print("Uart:" + uart_msg + " " + "Drive:" + drive_status);
     display.setCursor(0, 20); // Display linear velocity
-    display.setTextSize(1.5);
+    display.setTextSize(1);
     display.print("Vel X: ");
     display.println(myData.vel_x, 2);
 
