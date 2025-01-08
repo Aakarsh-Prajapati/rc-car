@@ -95,10 +95,10 @@ void loop() {
     int button_right_state = digitalRead(BUTTON_RIGHT);
 
     if (button_left_state == LOW && button_right_state == HIGH) {
-      myData.vel_w = 3; // Only left button pressed
+      myData.vel_w = -6; // Only left button pressed
       Serial.println("Right");
     } else if (button_right_state == LOW && button_left_state == HIGH) {
-      myData.vel_w = -3; // Only right button pressed
+      myData.vel_w = 6; // Only right button pressed
       Serial.println("Left");
     } else {
       myData.vel_w = 0; // No button or both buttons pressed
