@@ -5,8 +5,8 @@
 #include <espnow.h>
 
 // Pin definitions for buttons
-#define BUTTON_LEFT D5
-#define BUTTON_RIGHT D6
+#define BUTTON_LEFT D6
+#define BUTTON_RIGHT D5
 
 // Dead zone threshold for joystick sensitivity
 #define DEAD_ZONE 10
